@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="employeedetails" format="csv">
+      <types:shape format="weave" example="examples/samplecsv20k.csv"><![CDATA[%dw 2.0
+
+type employeedetails = Array<{|  SerialNumber: Number,   CompanyName: String,   EmployeeMarkme: String,   Description: String,   Leavee: String|}> {"isQuotedString": "false",
+"header": "true",
+"headerLineNumber": "0",
+"separator": ","}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+        <types:property name="separator" value=","/>
+      </types:properties>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#581c12ee-4f76-4fa5-8814-758ce8815f64">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="employeedetails"/>
+        </types:message>
+      </types:input-event>
+      <types:output-event>
+        <types:message>
+          <types:payload type="employeedetails"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>

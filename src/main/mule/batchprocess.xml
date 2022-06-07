@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="538a6a74-ba81-490d-84b8-dd20bcbbdee7" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="8cbe172a-5652-43f7-aeef-ac318c317b64" />
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="3c383402-e613-499f-b61b-e4644d3a05bf" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" database="poori" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="472c699b-f5d7-478a-b90f-93619f5cd859" >
+		<salesforce:basic-connection username="rao@1991.com" password="Login@1234567" securityToken="eu1N0p03NX0YwOD88WckK5sC" />
+	</salesforce:sfdc-config>
+	<flow name="batchprocessFlow" doc:id="73179b4e-73c0-4e1c-bde7-e27a981f18f8" >
+		<http:listener doc:name="Listener" doc:id="a349a2c5-ca93-4c0d-8a9f-c6eb068678a9" config-ref="HTTP_Listener_config" path="/empdetails"/>
+		<file:read doc:id="4f16c42e-8317-40bc-a7ce-5e94db15fefd" config-ref="File_Config" path="D:\MuleSoft docs\samplecsv20k.csv"/>
+		<batch:job jobName="batchprocessBatch_Job" doc:id="b3e8d7dd-a502-47fe-8d22-c3fd3c770c48" maxFailedRecords="10000">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="28615ea8-3c37-4439-8922-1308779fc550" >
+					<ee:transform doc:name="Transform Message" doc:id="581c12ee-4f76-4fa5-8814-758ce8815f64" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map(payload,indexOfPayload) ->
+
+
+{
+	SerialNumber:payload.SerialNumber,
+	CompanyName:payload.CompanyName,
+	EmployeeMarkme:payload.EmployeeMarkme,
+	Description:payload.Description,
+	Leavee:payload.Leavee
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<salesforce:upsert doc:name="Upsert" doc:id="5c7947c9-18bb-45d9-9c42-608669c72658" config-ref="Salesforce_Config" objectType="Account"/>
+					<db:bulk-insert doc:id="a2ef0fcb-8c2f-4a73-b2f3-3ed48c1b4e45" config-ref="Database_Config">
+						<db:sql ><![CDATA[INSERT INTO empdetails (SerialNumber, CompanyName, EmployeeMarkme, Description, Leavee) VALUES (:SerialNumber, :CompanyName, :EmployeeMarkme, :Description, :Leavee)]]></db:sql>
+					</db:bulk-insert>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="8340c870-4009-4a5e-a604-2f1fc84e59b6" streaming="true">
+						<ee:transform doc:name="Transform Message" doc:id="a5f22bbd-7e59-4203-8447-59cd629dcd8b" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="fed5b942-99cd-431e-b6f5-34c888cc8c60" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>
